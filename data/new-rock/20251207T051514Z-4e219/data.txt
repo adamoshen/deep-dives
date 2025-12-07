@@ -1,0 +1,11 @@
+file: new-rock.rds
+file_size: 1418
+pin_hash: 4e219dd0c36db6d8
+type: rds
+title: A new data set based off of `rock`
+description: Take the rock dataset and create a new variable called `blah` by multiplying
+  `area` with `shape`
+tags: ~
+urls: ~
+created: 20251207T051514Z
+api_version: 1

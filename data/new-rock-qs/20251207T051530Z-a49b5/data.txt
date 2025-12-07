@@ -1,0 +1,11 @@
+file: new-rock-qs.qs
+file_size: 1384
+pin_hash: a49b5e2f5a499806
+type: file
+title: A new data set based off of `rock` (qs)
+description: Take the rock dataset and create a new variable called `blah` by multiplying
+  `area` with `shape` (qs)
+tags: ~
+urls: ~
+created: 20251207T051530Z
+api_version: 1

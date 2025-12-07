@@ -1,0 +1,589 @@
+---
+title: "R Workflows"
+date: "December 4, 2025"
+date-format: long
+author: "Adam Shen"
+format:
+  revealjs:
+    theme: [dark, "../inst/slides.scss"]
+    incremental: true
+    code-line-numbers: false
+    overview: true
+    progress: true
+    history: false
+    touch: true
+    keyboard: true
+    controls: true
+    controls-back-arrows: visible
+    controls-layout: edges
+    help: true
+    highlight-style: "../inst/adam_one_light.theme"
+    from: markdown-smart
+    embed-resources: true
+    html-math-method: katex
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  echo=TRUE, message=FALSE, warning=FALSE
+)
+
+new_hooks <- fansi::set_knit_hooks(
+  knitr::knit_hooks,
+  which = c("output", "message", "warning", "error")
+)
+
+options(crayon.enabled = TRUE)
+```
+
+## Packages
+
+```{r, eval=FALSE}
+# install.packages("pak")
+pak::pak(c("here", "pins"))
+pak::pak("adamoshen/pinsqs")
+```
+
+I use `{pak}` to install my packages because it typically has better success at installing packages
+**on the first try**.
+
+# Folder structure
+
+## The R Project (.Rproj) file
+
+- An R Project can be created by clicking the blue cube in the top-right corner of RStudio and 
+selecting **New Project...**.
+
+- The .Rproj file is more than just a shortcut to opening a new R session to the desired directory.
+
+- It can also act as an anchor or a reference point when specifying paths in a working document
+related to a project.
+
+- When a project has a .Rproj file, unless otherwise specified, it should always be assumed that
+paths are relative to the .Rproj file.
+
+. . .
+
+::: {.callout-tip title="Recall"}
+For reproducibility and portability, your code should always use relative paths, never absolute
+paths!
+:::
+
+## A simple project (no .Rproj)
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── 00-data-prep.Rmd
+├── 01-analysis.Rmd
+└─── \033[94m\033[1mdata\033[22m\033[39m\
+     ├── chickens.csv
+     └── cows.csv"
+)
+```
+
+- In this example, the .Rmd files and the data folder are all at the same level.
+- A path specification to a data file from the .Rmd document is straightforward and might look like:
+  ```{r, eval=FALSE}
+  chickens <- readr::read_csv("data/chickens.csv")
+  ```
+
+## A complicated project (no .Rproj)
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+- In this example, many items live in their own folders. It is unclear how paths should be
+specified.
+- If my main analysis scripts are the .Rmd files, should my working directory be set to the Rmd
+folder?
+
+## A complicated project (no .Rproj)
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+- When knitting .Rmd files, the default setting knits in the directory of the .Rmd file (in this
+case, the Rmd folder). Paths specified when running code in your .Rmd file interactively may not
+work during rendering time if your working directory is not the directory of the .Rmd file.
+- What if my .Rmd file also sources a .R file, where the .R file reads in one of the data files? How
+should paths across files be specified in this scenario?
+
+## The `{here}` package
+
+The [{here}](https://here.r-lib.org/) package solves our problems by making use of the .Rproj file
+as the reference point.
+
+- The main function is the `here()` function, i.e. `here::here()`.
+
+- `here::here()` is simply a path generator -- you supply a path **relative** to the .Rproj file,
+and it returns an **absolute path**.
+
+. . .
+
+::: {.callout-tip}
+We typically don't attach the `{here}` package via `library(here)` since we only use one function.
+It's also kind of fun to write `here::here()`.
+:::
+
+## Using `here::here()`
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+We can construct paths by supplying a full relative path:
+
+```{r, eval=FALSE}
+here::here("data/chickens.csv")
+```
+
+```{r, echo=FALSE}
+"C:/Users/ShenA/Documents/farm-animals/data/chickens.csv"
+```
+
+## Using `here::here()`
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+Or we can supply a number of individual strings:
+
+```{r, eval=FALSE}
+here::here("data", "chickens.csv")
+```
+
+```{r, echo=FALSE}
+"C:/Users/ShenA/Documents/farm-animals/data/chickens.csv"
+```
+
+## Using `here::here()`
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+Note that supplying a character vector has a different effect:
+  
+```{r, eval=FALSE}
+here::here(c("data", "chickens.csv"))
+```
+
+```{r, echo=FALSE}
+c(
+  "C:/Users/ShenA/Documents/farm-animals/data",
+  "C:/Users/ShenA/Documents/farm-animals/chickens.csv"
+)
+```
+
+
+## Using `here::here()`
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+Also note that `here::here()` is just a path constructor -- it does not verify that the path
+exists!
+
+```{r, eval=FALSE}
+here::here("this/doesnt/exist.html")
+```
+
+```{r, echo=FALSE}
+"C:/Users/ShenA/Documents/farm-animals/this/doesnt/exist.html"
+```
+
+## Actual use case
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── chickens.csv
+│   └── cows.csv
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+- With a .Rproj file and the `{here}` package, regardless of whether we are in an R script or an Rmd
+document, we can always reference the `chickens.csv` file using:
+  ```{r, eval=FALSE}
+  here::here("data/chickens.csv")
+  ```
+
+- We can then read in `chickens.csv` as usual, where `here::here(...)` takes the place of the file
+path we would usually specify:
+  ```{r, eval=FALSE}
+  chickens <- readr::read_csv(here::here("data/chickens.csv"))
+  ```
+
+# Saving, organising, (and sharing) data and models
+
+## Has this happened to you?
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+│   ├── clean-data.rds
+│   ├── clean-data-scaled-15.rds
+│   ├── clean-data-scaled-20.rds
+│   ├── clean-data-with-extra-covariates.rds
+│   └── raw-data.rds
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── bad-model1.rds
+│   ├── bad-model2.rds
+│   ├── good-model.rds
+│   └── okayish-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+- You want to be as descriptive as possible with file naming, but also, the longer the filename is,
+the more typing you have to do to read it back in.
+- You might have a reference sheet elsewhere that describes the parameter sets used for the data
+and models, but it's not clear to collaborators what/where this file may be.
+
+## The `{pins}` package
+
+The [{pins}](https://pins.rstudio.com/) package allows you to save miscellaneous objects ("pins")
+to a remote/local folder ("pin board"). The `{pins}` package is developed by Posit and is available
+for both R and [Python](https://rstudio.github.io/pins-python/)!
+
+- Pins are saved as a folder containing the data file and metadata. Fields include a title and a
+description so that you can be as descriptive as needed.
+
+- A pin board can be "versioned" meaning that pins are never overwritten and all versions of pins
+are kept (with timestamps). This is useful if you need to revert to a previous version of a pin.
+
+- Pin boards are easy to share so that your analysis code is reproducible -- as a pin board is
+simply a folder, you just need to ensure that collaborators have access to the folder.
+
+- [Pins boards supported](https://pins.rstudio.com/reference/index.html#boards) include local
+folders and folders found in remote storage drives/containers (might not be approved for usage at
+work though).
+
+## Core functions
+
+:::{.nonincremental}
+- `pin_write()`: Write an object to a pin board.
+
+- `pin_read()`: Read an object from a pin board.
+
+- `pin_search()`: List all objects on a pin board.
+:::
+
+# A quick example
+
+```{r}
+library(tidyverse)
+library(pins)
+```
+
+## Create the pin board
+
+Consider our previous setup but with an empty `data` folder that we wish to use as our pin board:
+
+```{r, echo=FALSE}
+cat(
+"\033[94m\033[1mfarm-animals\033[22m\033[39m\
+├── \033[94m\033[1mdata\033[22m\033[39m\
+├── farm-animals.Rproj
+├── \033[94m\033[1mmodels\033[22m\033[39m\
+│   ├── chicken-model.rds
+│   └── cow-model.rds
+├── \033[94m\033[1mR\033[22m\033[39m\
+│   ├── misc-script1.R
+│   └── misc-script2.R
+└── \033[94m\033[1mRmd\033[22m\033[39m\
+    ├── 00-data-prep.Rmd
+    └── 01-analysis.Rmd"
+)
+```
+
+Here, `db` stands for "data board" (less typing).
+
+```{r}
+db <- board_folder(here::here("data"))
+```
+
+## Create the pin board
+
+:::{.callout-note}
+This needs to be declared at the beginning of all your scripts!
+:::
+
+```{r, eval=FALSE}
+db <- board_folder(here::here("data"))
+```
+
+. . .
+
+Combining `{here}` with `{pins}` we can place pin boards wherever we want!
+
+:::{.callout-note}
+If the folder does not already exist, `board_folder()` will create it.
+:::
+
+## Write some data to the pin board
+
+Create some data:
+
+```{r}
+new_rock <- datasets::rock %>%
+  as_tibble() %>%
+  mutate(blah = area * shape)
+
+new_rock
+```
+
+## Write some data to the pin board
+
+Write it to the board:
+
+```{r, eval=FALSE}
+db %>%
+  pin_write(
+    new_rock,
+    name = "new-rock", # What we use to refer to it
+    title = "A new data set based off of `rock`",
+    description = "Take the rock dataset and create a new variable called `blah` by multiplying `area` with `shape`"
+  )
+```
+
+## Write a model to the pin board
+
+Create a linear model:
+
+```{r}
+idk_model <- lm(peri ~ perm + blah, data = new_rock)
+
+broom::tidy(idk_model)
+```
+
+## Write a model to the pin board
+
+Write it to the board:
+
+```{r, eval=FALSE}
+db %>%
+  pin_write(
+    idk_model,
+    name = "idk-model",
+    title = "Just some model, idk",
+    description = "Legit just throwing stuff together"
+  )
+```
+
+## Inspect our pin board
+
+```{r, eval=FALSE}
+db %>%
+  pin_search()
+```
+
+```{r, echo=FALSE}
+db %>%
+  pin_search() %>%
+  slice(-3)
+```
+
+```{r}
+db %>%
+  pin_meta("idk-model")
+```
+
+## Read items from the board
+
+```{r}
+some_data <- db %>%
+  pin_read("new-rock")
+
+some_data
+```
+
+## Read items from the board
+
+```{r}
+some_model <- db %>%
+  pin_read("idk-model")
+
+broom::tidy(some_model)
+```
+
+# Extensions
+
+## On pin reading/writing
+
+- Out of the box, the `{pins}` package supports the reading and writing of files in csv, json, rds,
+parquet, arrow, and qs (single threaded).
+
+- If the file type is not specified, the default is rds.
+
+- Extensions can be created on top of the `{pins}` infrastructure to further customise supported
+file types and the behaviour of their reading/writing.
+
+## The `{pinsqs}` package
+
+- The [{pinsqs}](https://github.com/adamoshen/pinsqs) package (authored by myself!) provides the
+utilities to read and write pins in the qs format with support for usage of multiple threads.
+
+- The `{qs}` package uses `qsave()` and `qread()`, so the `{pinsqs}` equivalents are
+  - `pin_qread()` instead of `pin_read()`
+  - `pin_qsave()` instead of `pin_write()`
+
+- By default, the number of threads used is half of the available threads on your device.
+
+## Example - `new_rock`
+
+Write the `new_rock` data set to the pin board as a qs file using multiple threads:
+
+```{r}
+library(pinsqs)
+```
+
+```{r, eval=FALSE}
+db %>%
+  pin_qsave(
+    new_rock,
+    name = "new-rock-qs", # What we use to refer to it
+    title = "A new data set based off of `rock` (qs)",
+    description = "Take the rock dataset and create a new variable called `blah` by multiplying `area` with `shape` (qs)"
+  )
+```
+
+## Inspect the pin board again
+
+```{r}
+db %>%
+  pin_search()
+```
+
+```{r}
+db %>%
+  pin_meta("new-rock-qs")
+```
+
+## Read the qs file from the board
+
+```{r}
+new_rock_qs <- db %>%
+  pin_qread("new-rock-qs")
+
+new_rock_qs
+```
+
+# Summary
+
+1. Use .Rproj files when possible.
+
+2. Use `here::here()` to specify paths relative to the .Rproj.
+
+3. Use `{pins}` to store data objects. 

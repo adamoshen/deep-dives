@@ -1,0 +1,10 @@
+file: idk-model.rds
+file_size: 3366
+pin_hash: eed4db53af399021
+type: rds
+title: Just some model, idk
+description: Legit just throwing stuff together
+tags: ~
+urls: ~
+created: 20251207T051518Z
+api_version: 1
