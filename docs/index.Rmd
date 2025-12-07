@@ -1,0 +1,39 @@
+---
+title: "Deep Dives"
+output:
+  html_document:
+    theme:
+      version: 5
+      bootswatch: default
+    mathjax: null
+    md_extensions: "-smart"
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  echo=FALSE, message=FALSE, warning=FALSE
+)
+```
+
+```{r}
+library(magrittr)
+library(stringr)
+library(purrr)
+library(fs)
+library(gluedown)
+```
+
+## Slides
+
+```{r}
+texts <- dir_ls(here::here("qmd")) %>%
+  path_file() %>%
+  path_ext_remove()
+
+links <- str_c("./", texts, ".html", collapse="")
+```
+
+```{r, results="asis"}
+map2(texts, links, md_link) %>%
+  list_c()
+```
