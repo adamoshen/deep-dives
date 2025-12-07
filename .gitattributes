@@ -1,4 +1,4 @@
-docs/** -linguist-documentation
+docs/index.Rmd -linguist-documentation
 
 # Proper language detection
 *.Rmd linguist-detectable
